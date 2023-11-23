@@ -1,0 +1,125 @@
+package com.example.smart_trading;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class TradingApp {
+
+    private List<User> users;
+    private List<Account> accounts;
+    private List<Strategy> strategies;
+    private PredictionPage predictionPage;
+    private TradingConnector tradingConnector;
+
+    public TradingApp() {
+        users = new ArrayList<>();
+        accounts = new ArrayList<>();
+        strategies = new ArrayList<>();
+        predictionPage = new PredictionPage();
+        tradingConnector = new TradingConnector("binance", "YOUR_API_KEY", "YOUR_API_SECRET"); // Replace with your actual exchange, API key, and secret
+    }
+
+    public User getUser(String username) {
+        for (User user : users) {
+            if (user.getUsername().equals(username)) {
+                return user;
+            }
+        }
+        return null;
+    }
+
+    public Account getAccount(String accountId) {
+        for (Account account : accounts) {
+            if (account.getAccountId().equals(accountId)) {
+                return account;
+            }
+        }
+        return null;
+    }
+
+    public Strategy getStrategy(String strategyName) {
+        for (Strategy strategy : strategies) {
+            if (strategy.getStrategyName().equals(strategyName)) {
+                return strategy;
+            }
+        }
+        return null;
+    }
+
+    public List<User> getUsers() {
+        return users;
+    }
+
+    public List<Account> getAccounts() {
+        return accounts;
+    }
+
+    public List<Strategy> getStrategies() {
+        return strategies;
+    }
+
+    public PredictionPage getPredictionPage() {
+        return predictionPage;
+    }
+
+    public void addUser(User user) {
+        users.add(user);
+    }
+
+    public void addAccount(Account account) {
+        accounts.add(account);
+    }
+
+    public void addStrategy(Strategy strategy) {
+        strategies.add(strategy);
+    }
+
+    public void openTrade(User user, Account account, Strategy strategy, int volume, double price, String side) {
+        if (account.getBalance() < volume * price) {
+            throw new InsufficientBalanceException("The account does not have sufficient balance to open the trade.");
+        }
+
+        Trade trade = new Trade(user, account, strategy, volume, price, side);
+        account.addTrade(trade);
+
+        // Get the strategy API
+        StrategyAPI strategyAPI = app.getStrategyAPI();
+
+        // Subscribe to the strategy signals
+        strategyAPI.subscribe(new StrategySignalListener() {
+            @Override
+            public void onSignal(StrategySignal signal) {
+                // Open a trade based on the signal
+                if (signal.getSide().equals(side)) {
+                    app.openTrade(account, strategy, signal.getVolume(), signal.getPrice(), signal.getSide());
+                }
+            }
+        });
+    }
+
+    public void closeTrade(Trade trade) {
+        account.getTrades().remove(trade);
+
+        // Send the close trade order to the trading platform using TradingConnector
+        tradingConnector.closeTrade(trade);
+    }
+
+    public void analyzeAccountPerformance(Account account) {
+        // Get all trades for the account
+        List<Trade> trades = account.getTrades();
+
+        // Calculate the total profit or loss
+        double profitLoss = 0;
+        for (Trade trade : trades) {
+            if (trade.getSide().equals("buy")) {
+                profitLoss += trade.getVolume() * (trade.getPrice() - trade.getOpeningPrice());
+            } else if (trade.getSide().equals("sell")) {
+                profitLoss -= trade.getVolume() * (trade.getPrice() - trade.getOpeningPrice());
+            }
+        }
+
+        // Print the profit or loss
+        System.out.println("The total profit or loss for account " + account.getAccountId() + " is: " + profitLoss);
+    }
+
+    public static void main(
